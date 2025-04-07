@@ -22,7 +22,7 @@ pub struct VerifyPresentationResponse {
     pub recv: String,
     pub server_name: String,
     pub time: String,
-    pub verifiong_key: String,
+    pub verifying_key: String,
 }
 
 /// Request object of the /session API

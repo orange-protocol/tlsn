@@ -285,7 +285,7 @@ pub async fn verify_presentation(
             recv: recv,
             server_name:server_name.to_string(),
             time: time.to_string(),
-            verifiong_key:hex_key,
+            verifying_key:hex_key,
         }),
     ).into_response()
 }
