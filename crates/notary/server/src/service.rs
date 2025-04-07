@@ -20,11 +20,11 @@ use tokio::{
 use tokio_util::compat::TokioAsyncReadCompatExt;
 use tracing::{debug, error, info, trace};
 use uuid::Uuid;
-
+use tlsn_core::{presentation::{Presentation,PresentationOutput},signing::VerifyingKey};
 use crate::{
     domain::notary::{
         NotarizationRequestQuery, NotarizationSessionRequest, NotarizationSessionResponse,
-        NotaryGlobals,
+        NotaryGlobals,VerifyPresentationRequest,VerifyPresentationResponse
     },
     error::NotaryServerError,
     service::{
@@ -211,4 +211,81 @@ pub async fn notary_service<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
     .map_err(|_| eyre!("Timeout reached before notarization completes"))??;
 
     Ok(())
+}
+
+#[debug_handler(state = NotaryGlobals)]
+pub async fn verify_presentation(
+    // State(notary_globals): State<NotaryGlobals>,
+    payload: Result<Json<VerifyPresentationRequest>, JsonRejection>,
+) -> impl IntoResponse {
+    // Parse the body payload
+    let payload = match payload {
+        Ok(payload) => payload,
+        Err(err) => {
+            error!("Malformed payload submitted for verify_presentation : {err}");
+            return NotaryServerError::BadProverRequest(err.to_string()).into_response();
+        }
+    };
+
+    let data_hex = &payload.data;
+    let data_bytes = match hex::decode(data_hex){
+        Ok(bytes) => bytes,
+        Err(err) => {
+            return NotaryServerError::BadProverRequest(format!(
+                "Invalid hex data: {}",
+                err
+            ))
+            .into_response();
+        }
+    };
+
+    let presentation: Presentation = match bincode::deserialize(&data_bytes){
+        Ok(presentation) => presentation,
+        Err(err) => {
+            return NotaryServerError::BadProverRequest(format!(
+                "Invalid presentation: {}",
+                err
+            ))
+            .into_response();
+        }
+    };
+        
+    let provider = tlsn_core::CryptoProvider::default();
+
+    let VerifyingKey {
+        alg,
+        data: key_data,
+    } = presentation.verifying_key();
+    let hex_key =hex::encode(key_data);
+    // println!("alg:{:?},hex_key:{:?}",alg, hex_key);
+    //todo check the key belong to self server
+
+    let PresentationOutput {
+        server_name,
+        connection_info,
+        transcript,
+        ..
+    } = presentation.verify(&provider).unwrap();
+
+    let time = chrono::DateTime::UNIX_EPOCH + Duration::from_secs(connection_info.time);
+    let server_name = server_name.unwrap();
+    let mut partial_transcript = transcript.unwrap();
+    // Set the unauthenticated bytes so they are distinguishable.
+    partial_transcript.set_unauthed(b'X');
+
+    let sent = String::from_utf8_lossy(partial_transcript.sent_unsafe()).to_string();
+    let recv = String::from_utf8_lossy(partial_transcript.received_unsafe()).to_string();
+
+
+    // Return the session id in the response to the client
+    (
+        StatusCode::OK,
+        Json(VerifyPresentationResponse {
+            sent: sent,
+            recv: recv,
+            server_name:server_name.to_string(),
+            time: time.to_string(),
+            verifiong_key:hex_key,
+        }),
+    ).into_response()
 }

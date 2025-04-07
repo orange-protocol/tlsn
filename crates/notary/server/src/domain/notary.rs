@@ -15,6 +15,16 @@ pub struct NotarizationSessionResponse {
     pub session_id: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyPresentationResponse {
+    pub sent: String,
+    pub recv: String,
+    pub server_name: String,
+    pub time: String,
+    pub verifiong_key: String,
+}
+
 /// Request object of the /session API
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,6 +34,13 @@ pub struct NotarizationSessionRequest {
     pub max_sent_data: Option<usize>,
     /// Maximum data that can be received by the prover
     pub max_recv_data: Option<usize>,
+}
+
+//verify presentation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyPresentationRequest {
+    pub data: String,
 }
 
 /// Request query of the /notarize API
