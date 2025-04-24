@@ -633,4 +633,5 @@ mod test {
         let signer = PrivateKeySigner::from_slice(sk).unwrap();
         signer.sign_message_sync(msg).unwrap().as_bytes().to_vec()
     }
+
 }

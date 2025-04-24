@@ -264,6 +264,7 @@ pub async fn verify_presentation(
         server_name,
         connection_info,
         transcript,
+        // attestation,
         ..
     } = presentation.verify(&provider).unwrap();
 
@@ -276,7 +277,8 @@ pub async fn verify_presentation(
     let sent = String::from_utf8_lossy(partial_transcript.sent_unsafe()).to_string();
     let recv = String::from_utf8_lossy(partial_transcript.received_unsafe()).to_string();
 
-
+    // print!("attestation:{:?}\n",attestation);
+    // print!("transcript:{:?}\n",partial_transcript);
     // Return the session id in the response to the client
     (
         StatusCode::OK,
